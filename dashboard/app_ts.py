@@ -78,11 +78,6 @@ def country_list():
     return cq("SELECT DISTINCT country FROM cxc ORDER BY country")["country"].tolist()
 
 stats=stats_cached()
-if stats["cxc_rows"]==0:
-    st.title("India Trade Intelligence")
-    st.error("No data. Run: python main.py --process")
-    st.stop()
-
 st.title("India Trade Intelligence")
 st.caption(f"{'☁️ Cloud' if is_cloud() else '💻 Local'} | "
            f"**{stats['cxc_rows']:,} records** | **{stats['hs_codes']:,} HS4** | "
