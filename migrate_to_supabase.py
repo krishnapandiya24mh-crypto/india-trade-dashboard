@@ -174,15 +174,37 @@ def run_migration(url: str, tables: list = None):
     print(f"{'='*60}\n")
 
 
+def verify_migration(url: str):
+    """Check row counts in Supabase match SQLite."""
+    print("\n=== VERIFYING MIGRATION ===\n")
+    engine = get_pg_engine(url)
+    local  = sqlite3.connect(DB_PATH)
+
+    for table in ["cxc", "commodity", "country"]:
+        try:
+            pg_count  = pd.read_sql(f"SELECT COUNT(*) AS n FROM {table}", engine).iloc[0,0]
+            loc_count = pd.read_sql(f"SELECT COUNT(*) AS n FROM {table}", local).iloc[0,0]
+            match = "OK" if pg_count >= loc_count * 0.99 else "MISMATCH"
+            print(f"  {table:12s}: local={loc_count:>8,}  supabase={pg_count:>8,}  [{match}]")
+        except Exception as e:
+            print(f"  {table:12s}: ERROR — {e}")
+
+    local.close()
+    print()
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Migrate SQLite to Supabase")
-    p.add_argument("--url",   required=True, help="Supabase PostgreSQL connection URL")
-    p.add_argument("--test",  action="store_true", help="Test connection only")
-    p.add_argument("--table", help="Migrate specific table only (cxc/commodity/country)")
+    p.add_argument("--url",    required=True, help="Supabase PostgreSQL connection URL")
+    p.add_argument("--test",   action="store_true", help="Test connection only")
+    p.add_argument("--verify", action="store_true", help="Verify row counts match")
+    p.add_argument("--table",  help="Migrate one table only (cxc/commodity/country)")
     args = p.parse_args()
 
     if args.test:
         test_connection(args.url)
+    elif args.verify:
+        verify_migration(args.url)
     elif args.table:
         if test_connection(args.url):
             migrate_table(DB_PATH, args.url, args.table)

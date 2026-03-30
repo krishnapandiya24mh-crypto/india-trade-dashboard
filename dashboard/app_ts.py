@@ -1,27 +1,3 @@
-import os
-import pandas as pd
-from sqlalchemy import create_engine
-
-def get_engine():
-    url = os.environ.get("SUPABASE_URL")
-    if not url:
-        raise ValueError("SUPABASE_URL not found")
-    return create_engine(url)
-
-def q(query):
-    engine = get_engine()
-    return pd.read_sql(query, engine)
-
-def get_stats():
-    engine = get_engine()
-    try:
-        return pd.read_sql("SELECT COUNT(*) as total FROM cxc", engine)
-    except:
-        return None
-
-def is_cloud():
-    return True
-
 """
 India Trade Intelligence Dashboard
 7 tabs: Overview | Commodity | Country | World Map | Trends | Monthly Returns | YoY
@@ -70,14 +46,41 @@ def stats_cached():
 @st.cache_data(ttl=600)
 def hs_list():
     df=cq("SELECT DISTINCT hs_code,hs_description FROM cxc ORDER BY hs_code")
-    df["label"]=df["hs_code"]+" — "+df["hs_description"].str[:55]
+    if df.empty or "hs_code" not in df.columns:
+        return pd.DataFrame(columns=["hs_code","hs_description","label"])
+    df["label"]=df["hs_code"].astype(str)+" — "+df["hs_description"].astype(str).str[:55]
     return df
 
 @st.cache_data(ttl=600)
 def country_list():
-    return cq("SELECT DISTINCT country FROM cxc ORDER BY country")["country"].tolist()
+    df = cq("SELECT DISTINCT country FROM cxc ORDER BY country")
+    if df.empty or "country" not in df.columns:
+        return []
+    return df["country"].tolist()
 
 stats=stats_cached()
+if stats["cxc_rows"]==0:
+    st.title("India Trade Intelligence")
+    st.error("No trade data found in database.")
+    if is_cloud():
+        st.warning("""
+### Supabase is connected but empty — migration needed
+
+Your database has 0 rows. You need to upload your data from your PC to Supabase.
+
+**Run this on your PC:**
+```
+pip install sqlalchemy psycopg2-binary
+python migrate_to_supabase.py --url "YOUR_SUPABASE_URL"
+```
+
+This uploads your 1.5M rows to Supabase (~20-30 minutes).
+After migration, refresh this page.
+        """)
+    else:
+        st.info("Run: `python main.py --process` to load your tradestat files.")
+    st.stop()
+
 st.title("India Trade Intelligence")
 st.caption(f"{'☁️ Cloud' if is_cloud() else '💻 Local'} | "
            f"**{stats['cxc_rows']:,} records** | **{stats['hs_codes']:,} HS4** | "
