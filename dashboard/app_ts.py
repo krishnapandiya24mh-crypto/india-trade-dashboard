@@ -1,10 +1,26 @@
-import sys
 import os
+import pandas as pd
+from sqlalchemy import create_engine
 
-sys.path.append(os.path.dirname(__file__))
+def get_engine():
+    url = os.environ.get("SUPABASE_URL")
+    if not url:
+        raise ValueError("SUPABASE_URL not found")
+    return create_engine(url)
 
-from db_cloud import get_engine, q, get_stats, is_cloud
-engine = get_engine()
+def q(query):
+    engine = get_engine()
+    return pd.read_sql(query, engine)
+
+def get_stats():
+    engine = get_engine()
+    try:
+        return pd.read_sql("SELECT COUNT(*) as total FROM cxc", engine)
+    except:
+        return None
+
+def is_cloud():
+    return True
 
 """
 India Trade Intelligence Dashboard
