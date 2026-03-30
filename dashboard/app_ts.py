@@ -1,6 +1,8 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.append(os.path.dirname(__file__))
+
 from db_cloud import get_engine, q, get_stats, is_cloud
 engine = get_engine()
 
